@@ -960,6 +960,8 @@ NSString * const MVStatusTaskTerminated           = @"MVStatusTaskTerminated";
     case CPU_TYPE_POWERPC64:  return @"PPC64";
     case CPU_TYPE_ARM:        return @"ARM";  
     case CPU_TYPE_ARM64:      return @"ARM64";
+    case CPU_TYPE_ARM64_32:   return @"ARM64_32";
+          
   }
 }
 
@@ -985,11 +987,12 @@ NSString * const MVStatusTaskTerminated           = @"MVStatusTaskTerminated";
 //----------------------------------------------------------------------------
 -(NSString *)getARM64Cpu:(cpu_subtype_t)cpusubtype
 {
-  switch (cpusubtype)
+  switch (cpusubtype & ~(CPU_SUBTYPE_MASK))
   {
     default:                      return @"???";
     case CPU_SUBTYPE_ARM64_ALL:   return @"ARM64_ALL";
     case CPU_SUBTYPE_ARM64_V8:    return @"ARM64_V8";
+    case CPU_SUBTYPE_ARM64E:      return @"ARM64E";
   }
 }
 

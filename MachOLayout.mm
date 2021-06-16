@@ -2230,6 +2230,7 @@ struct CompareSectionByName
                          :mach_header_64->cputype == CPU_TYPE_ANY ? @"CPU_TYPE_ANY" :
                           mach_header_64->cputype == CPU_TYPE_POWERPC64 ? @"CPU_TYPE_POWERPC64" :
                           mach_header_64->cputype == CPU_TYPE_X86_64 ? @"CPU_TYPE_X86_64" :
+                          mach_header_64->cputype == CPU_TYPE_ARM64_32 ? @"CPU_TYPE_ARM64_32" :
                           mach_header_64->cputype == CPU_TYPE_ARM64 ? @"CPU_TYPE_ARM64" : @"???"];
   
   [dataController read_uint32:range lastReadHex:&lastReadHex];
@@ -2248,6 +2249,7 @@ struct CompareSectionByName
   {
     if ((mach_header_64->cpusubtype & ~CPU_SUBTYPE_MASK) == CPU_SUBTYPE_ARM64_ALL)  [node.details appendRow:@"":@"":@"00000000":@"CPU_SUBTYPE_ARM64_ALL"];
     if ((mach_header_64->cpusubtype & ~CPU_SUBTYPE_MASK) == CPU_SUBTYPE_ARM64_V8)   [node.details appendRow:@"":@"":@"00000001":@"CPU_SUBTYPE_ARM64_V8"];
+    if ((mach_header_64->cpusubtype & ~CPU_SUBTYPE_MASK) == CPU_SUBTYPE_ARM64E)   [node.details appendRow:@"":@"":@"00000002":@"CPU_SUBTYPE_ARM64E"];
   }
 
   

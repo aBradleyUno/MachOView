@@ -74,6 +74,9 @@ using namespace std;
     case LC_DYLIB_CODE_SIGN_DRS:  return @"LC_DYLIB_CODE_SIGN_DRS";
     case LC_LINKER_OPTION:        return @"LC_LINKER_OPTION";
     case LC_LINKER_OPTIMIZATION_HINT: return @"LC_LINKER_OPTIMIZATION_HINT";
+    case LC_BUILD_VERSION:       return @"LC_BUILD_VERSION";
+    case LC_DYLD_EXPORTS_TRIE:   return @"LC_DYLD_EXPORTS_TRIE";
+    case LC_DYLD_CHAINED_FIXUPS: return @"LC_DYLD_CHAINED_FIXUPS";
   }
 }
 
@@ -2007,6 +2010,137 @@ using namespace std;
     return node;
 }
 
+////-----------------------------------------------------------------------------
+//- (MVNode *)createBuildToolNode:(MVNode *)parent
+//                              caption:(NSString *)caption
+//                             location:(uint32_t)location
+//             build_tool_version:(struct build_tool_version const *)build_tool_version
+//{
+//    MVNodeSaver nodeSaver;
+//    MVNode * node = [parent insertChildWithDetails:caption location:location length:sizeof(build_tool_version) saver:nodeSaver];
+//    
+//    NSRange range = NSMakeRange(location,0);
+//    NSString * lastReadHex;
+//    
+//    NSString *tool;
+//    
+//    switch (build_tool_version->tool) {
+//        case TOOL_LD:
+//            tool = @"LD";
+//            break;
+//        case TOOL_CLANG:
+//            tool = @"Clang";
+//            break;
+//        case TOOL_SWIFT:
+//            tool = @"Swift";
+//            break;
+//        default:
+//            tool = @"N/A";
+//            break;
+//    }
+//
+//    [dataController read_uint32:range lastReadHex:&lastReadHex];
+//    [node.details appendRow:[NSString stringWithFormat:@"%.8lX", range.location]
+//                           :lastReadHex
+//                           :@"Tool"
+//                           :tool];
+//    
+//    [dataController read_uint32:range lastReadHex:&lastReadHex];
+//    [node.details appendRow:[NSString stringWithFormat:@"%.8lX", range.location]
+//                           :lastReadHex
+//                           :@"Version"
+//                           :[NSString stringWithFormat:@"%u\n", build_tool_version->version]];
+//
+//    return node;
+//}
+
+//-----------------------------------------------------------------------------
+- (MVNode *)createLCBuildVersionNode:(MVNode *)parent
+                              caption:(NSString *)caption
+                             location:(uint32_t)location
+               build_version_command:(struct build_version_command const *)build_version_command
+                            platform:(NSString *) platform
+{
+    MVNodeSaver nodeSaver;
+    MVNode * node = [parent insertChildWithDetails:caption location:location length:build_version_command->cmdsize saver:nodeSaver];
+    
+    NSRange range = NSMakeRange(location,0);
+    NSString * lastReadHex;
+    
+    [dataController read_uint32:range lastReadHex:&lastReadHex];
+    [node.details appendRow:[NSString stringWithFormat:@"%.8lX", range.location]
+                           :lastReadHex
+                           :@"Command"
+                           :[self getNameForCommand:build_version_command->cmd]];
+    
+    [node.details setAttributes:MVCellColorAttributeName,[NSColor greenColor],nil];
+    
+    [dataController read_uint32:range lastReadHex:&lastReadHex];
+    [node.details appendRow:[NSString stringWithFormat:@"%.8lX", range.location]
+                           :lastReadHex
+                           :@"Command Size"
+                           :[NSString stringWithFormat:@"%u", build_version_command->cmdsize]];
+    
+    [node.details setAttributes:MVCellColorAttributeName,[NSColor greenColor],
+     MVUnderlineAttributeName,@"YES",nil];
+
+    [dataController read_uint32:range lastReadHex:&lastReadHex];
+    [node.details appendRow:[NSString stringWithFormat:@"%.8lX", range.location]
+                           :lastReadHex
+                           :@"Platform"
+                           :platform];
+    
+    // ripped from otool source code
+    NSString *minos;
+    if((build_version_command->minos & 0xff) == 0)
+        minos = [NSString stringWithFormat:@"%u.%u\n",
+                  build_version_command->minos >> 16,
+                  (build_version_command->minos >> 8) & 0xff];
+    else
+        minos = [NSString stringWithFormat:@"%u.%u.%u\n",
+                   build_version_command->minos >> 16,
+                   (build_version_command->minos >> 8) & 0xff,
+                   build_version_command->minos & 0xff];
+    
+    
+    [dataController read_uint32:range lastReadHex:&lastReadHex];
+    [node.details appendRow:[NSString stringWithFormat:@"%.8lX", range.location]
+                           :lastReadHex
+                           :@"Minimum OS Version"
+                           :minos];
+    
+    // ripped from otool source code
+    NSString *sdk;
+    if(build_version_command->sdk == 0)
+       sdk = @"N/A";
+    else
+        if((build_version_command->sdk & 0xff) == 0)
+            sdk = [NSString stringWithFormat:@"%u.%u\n",
+                       build_version_command->sdk >> 16,
+                   (build_version_command->sdk >> 8) & 0xff];
+                else
+                    sdk = [NSString stringWithFormat:@"%u.%u.%u\n",
+                       build_version_command->sdk >> 16,
+                   (build_version_command->sdk >> 8) & 0xff,
+                       build_version_command->sdk & 0xff];
+    
+    
+    [dataController read_uint32:range lastReadHex:&lastReadHex];
+    [node.details appendRow:[NSString stringWithFormat:@"%.8lX", range.location]
+                           :lastReadHex
+                           :@"SDK"
+                           :sdk];
+    
+    [dataController read_uint32:range lastReadHex:&lastReadHex];
+    [node.details appendRow:[NSString stringWithFormat:@"%.8lX", range.location]
+                           :lastReadHex
+                           :@"Number of Tools"
+                           :[NSString stringWithFormat:@"%u\n", build_version_command->ntools]];
+
+    return node;
+}
+
+
 //-----------------------------------------------------------------------------
 - (MVNode *)createLCLinkerOptionNode:(MVNode *)parent
                              caption:(NSString *)caption
@@ -2270,6 +2404,8 @@ using namespace std;
     case LC_DATA_IN_CODE:
     case LC_DYLIB_CODE_SIGN_DRS:
     case LC_LINKER_OPTIMIZATION_HINT:
+    case LC_DYLD_EXPORTS_TRIE:
+    case LC_DYLD_CHAINED_FIXUPS:
     {
       MATCH_STRUCT(linkedit_data_command,location)
       node = [self createLCLinkeditDataNode:parent 
@@ -2403,6 +2539,52 @@ using namespace std;
                                    location:location
                       linker_option_command:linker_option_command];
     } break;
+      case LC_BUILD_VERSION:
+      {
+          MATCH_STRUCT(build_version_command, location);
+          NSString *platform;
+          
+          switch (build_version_command->platform) {
+              case PLATFORM_MACOS:
+                  platform = @"macOS";
+                  break;
+              case PLATFORM_IOS:
+                  platform = @"iOS";
+                  break;
+              case PLATFORM_TVOS:
+                  platform = @"TVOS";
+                  break;
+              case PLATFORM_WATCHOS:
+                  platform = @"WatchOS";
+                  break;
+              case PLATFORM_BRIDGEOS:
+                  platform = @"BridgeOS";
+                  break;
+              case PLATFORM_MACCATALYST:
+                  platform = @"MacCatalyst";
+                  break;
+              case PLATFORM_IOSSIMULATOR:
+                  platform = @"iOS Simulator";
+                  break;
+              case PLATFORM_TVOSSIMULATOR:
+                  platform = @"TVOS Simulator";
+                  break;
+              case PLATFORM_WATCHOSSIMULATOR:
+                  platform = @"WatchOS Simulator";
+                  break;
+              case PLATFORM_DRIVERKIT:
+                  platform = @"DriverKit";
+                  break;
+              default:
+                  break;
+          }
+          node = [self createLCBuildVersionNode:parent
+                                        caption:[NSString stringWithFormat:@"%@ (%@)",
+                                                 caption, platform]
+                                       location:location
+                          build_version_command:build_version_command
+                                        platform: platform];
+      } break;
     default:
       [self createDataNode:parent 
                    caption:[NSString stringWithFormat:@"%@ (unsupported)", caption]
